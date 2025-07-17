@@ -33,7 +33,7 @@ class McrconCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-        self.host = "127.0.0.1"       # mc server's IP
+        self.host = "localhost"       # mc server's IP
         self.port = 25575             # RCON port
 
     @app_commands.command(name="ping", description="Check bot latency")
@@ -79,10 +79,16 @@ class McrconCog(commands.Cog):
     )
     async def set_hostport(
         self, interaction: Interaction,
-        host: str, port: str,
+        host: str, port: int = 25575,
     ):
-        self.host = host
-        self.port = port
+        try:
+            self.host = host
+            self.port = int(port)
+        except ValueError as e:
+            await interaction.response.send_message(
+                f"Input adress is not valid. [{e}]",
+            )
+            return
 
         await interaction.response.send_message(
             f"Set mcrcon adress to {self.host}:{self.port}",

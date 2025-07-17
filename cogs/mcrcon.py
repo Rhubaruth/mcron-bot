@@ -183,11 +183,11 @@ class McrconCog(commands.Cog):
     @default_gamerules.error
     async def _cmd_error(self, interaction: Interaction, error):
         if not allowed_roles:
-            interaction.response.send_message(
+            await interaction.response.send_message(
                 "Set permisions for console interaction with /add_role."
             )
         else:
-            interaction.response.send_message(
+            await interaction.response.send_message(
                 f"Missing at least one role from {allowed_roles}.",
                 ephemeral=True
             )

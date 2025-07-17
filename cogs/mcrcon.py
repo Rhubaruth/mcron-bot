@@ -23,6 +23,7 @@ def _dynamic_role_check(interaction: Interaction) -> bool:
         return False  # Not in a guild
     user_roles = [role.name for role in interaction.user.roles]
     result = any(role in allowed_roles for role in user_roles)
+    print([role in allowed_roles for role in user_roles])
     print(f'user roles: {user_roles}\nallowed roles: {allowed_roles}')
     if not result:
         raise commands.MissingAnyRole(missing_roles=allowed_roles)

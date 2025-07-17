@@ -14,15 +14,16 @@ DEFAULT_GAMERULES = {
 }
 
 
-allowed_roles = [1393538282926772264]
+allowed_roles = ["mcrcon"]
 
 
 def _dynamic_role_check(interaction: Interaction) -> bool:
     # This function is called every time the command is run
     if not isinstance(interaction.user, Member):
         return False  # Not in a guild
-    user_roles = [role.id for role in interaction.user.roles]
+    user_roles = [role.name for role in interaction.user.roles]
     result = any(role in allowed_roles for role in user_roles)
+    print(f'user roles: {user_roles}\nallowed roles: {allowed_roles}')
     if not result:
         raise commands.MissingAnyRole(missing_roles=allowed_roles)
     return result
@@ -45,12 +46,12 @@ class McrconCog(commands.Cog):
         description="Allows a role to use mc console"
     )
     async def add_role(self, interaction: Interaction, role: Role):
-        if role.id in allowed_roles:
+        if role.name in allowed_roles:
             await interaction.response.send_message(
                 f"Role {role.name} is already allowed.",
             )
             return
-        allowed_roles.append(role.id)
+        allowed_roles.append(role.name)
         await interaction.response.send_message(
             f"Role {role.name} has been added to whitelist.",
         )

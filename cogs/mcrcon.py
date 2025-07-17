@@ -23,10 +23,9 @@ def _dynamic_role_check(interaction: Interaction) -> bool:
         return False  # Not in a guild
     user_roles = [role.name for role in interaction.user.roles]
     result = any(role in allowed_roles for role in user_roles)
-    print([role in allowed_roles for role in user_roles])
     print(f'user roles: {user_roles}\nallowed roles: {allowed_roles}')
     if not result:
-        raise commands.MissingAnyRole(missing_roles=allowed_roles)
+        raise app_commands.checks.MissingAnyRole(missing_roles=allowed_roles)
     return result
 
 
@@ -82,8 +81,6 @@ class McrconCog(commands.Cog):
         self, interaction: Interaction,
         host: str, port: str,
     ):
-        if not app_commands.checks.has_any_role(*allowed_roles):
-            raise commands.CheckFailure
         self.host = host
         self.port = port
 
@@ -169,7 +166,7 @@ class McrconCog(commands.Cog):
     @add_role.error
     @del_role.error
     async def _role_whitelist_error(self, interaction: Interaction, error):
-        if not isinstance(error, commands.CheckFailure):
+        if not isinstance(error, commands.MissingAnyRole):
             await interaction.response.send_message(
                 f"Unknown error - {error}",
                 ephemeral=True
@@ -184,6 +181,13 @@ class McrconCog(commands.Cog):
     @rcon.error
     @default_gamerules.error
     async def _cmd_error(self, interaction: Interaction, error):
+        if not isinstance(error, app_commands.checks.MissingAnyRole):
+            await interaction.response.send_message(
+                f"Unknown error - {error}",
+                ephemeral=True
+            )
+            return
+
         if not allowed_roles:
             await interaction.response.send_message(
                 "Set permisions for console interaction with /add_role."

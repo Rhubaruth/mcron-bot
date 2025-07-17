@@ -1,4 +1,4 @@
-from discord import Interaction
+from discord import Interaction, Role, Member
 from discord.ext import commands
 from discord import app_commands
 
@@ -14,6 +14,20 @@ DEFAULT_GAMERULES = {
 }
 
 
+allowed_roles = [1393538282926772264]
+
+
+def _dynamic_role_check(interaction: Interaction) -> bool:
+    # This function is called every time the command is run
+    if not isinstance(interaction.user, Member):
+        return False  # Not in a guild
+    user_roles = [role.id for role in interaction.user.roles]
+    result = any(role in allowed_roles for role in user_roles)
+    if not result:
+        raise commands.MissingAnyRole(missing_roles=allowed_roles)
+    return result
+
+
 class McrconCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
@@ -21,16 +35,53 @@ class McrconCog(commands.Cog):
         self.host = "127.0.0.1"       # mc server's IP
         self.port = 25575             # RCON port
 
-    @app_commands.command(name="ping", description="Check bot latency.")
+    @app_commands.command(name="ping", description="Check bot latency")
     async def ping(self, interaction):
         await interaction.response.send_message("Pong!")
 
-    @app_commands.command(name="set", description="Set server ip and port")
+    @app_commands.checks.has_permissions(administrator=True)
+    @app_commands.command(
+        name="add_role",
+        description="Allows a role to use mc console"
+    )
+    async def add_role(self, interaction: Interaction, role: Role):
+        if role.id in allowed_roles:
+            await interaction.response.send_message(
+                f"Role {role.name} is already allowed.",
+            )
+            return
+        allowed_roles.append(role.id)
+        await interaction.response.send_message(
+            f"Role {role.name} has been added to whitelist.",
+        )
+
+    @app_commands.checks.has_permissions(administrator=True)
+    @app_commands.command(
+        name="remove_role",
+        description="Disallows a role to use mc console"
+    )
+    async def del_role(self, interaction: Interaction, role: Role):
+        if role.id not in allowed_roles:
+            await interaction.response.send_message(
+                f"Role {role.name} is already not allowed.",
+            )
+            return
+        allowed_roles.remove(role.id)
+        await interaction.response.send_message(
+            f"Role {role.name} has been removed from whitelist.",
+        )
+
+    @app_commands.check(_dynamic_role_check)
+    @app_commands.command(
+        name="set_address",
+        description="Set server ip and port"
+    )
     async def set_hostport(
         self, interaction: Interaction,
         host: str, port: str,
     ):
-        print(host, port)
+        if not app_commands.checks.has_any_role(*allowed_roles):
+            raise commands.CheckFailure
         self.host = host
         self.port = port
 
@@ -39,17 +90,25 @@ class McrconCog(commands.Cog):
             ephemeral=True
         )
 
+    @app_commands.check(_dynamic_role_check)
     @app_commands.command(name="rcon", description="Send command to mc server")
     async def rcon(self, interaction: Interaction, cmd: str):
         password = get_mcrcon_pass()
 
-        with MCRcon(self.host, password, port=self.port) as mcr:
-            mcr.command(
-                f"/say {interaction.user.name}({interaction.user.id})" +
-                # f"@{interaction.channel.name}:" +
-                f" {cmd}"
+        try:
+            with MCRcon(self.host, password, port=self.port) as mcr:
+                mcr.command(
+                    f"/say {interaction.user.name}({interaction.user.id})" +
+                    # f"@{interaction.channel.name}:" +
+                    f" {cmd}"
+                )
+                response = mcr.command(f"/{cmd}")
+        except ConnectionRefusedError as e:
+            await interaction.response.send_message(
+                f"Server did not respond [{e}]"
             )
-            response = mcr.command(f"/{cmd}")
+            return
+
         if len(response) < 1700:
             await interaction.response.send_message(
                 f"Server response: {response}"
@@ -81,6 +140,7 @@ class McrconCog(commands.Cog):
                 f"{part}"
             )
 
+    @app_commands.check(_dynamic_role_check)
     @app_commands.command(
         name="set_gamerules",
         description="Set default gamerules"
@@ -88,14 +148,52 @@ class McrconCog(commands.Cog):
     async def default_gamerules(self, interaction: Interaction):
         password = get_mcrcon_pass()
 
-        with MCRcon(self.host, password, port=self.port) as mcr:
-            responses: list = []
-            for key, value in DEFAULT_GAMERULES.items():
-                result = mcr.command(f"/gamerule {key} {value}")
-                responses.append(result)
+        try:
+            with MCRcon(self.host, password, port=self.port) as mcr:
+                responses: list = []
+                for key, value in DEFAULT_GAMERULES.items():
+                    result = mcr.command(f"/gamerule {key} {value}")
+                    responses.append(result)
+        except ConnectionRefusedError as e:
+            await interaction.response.send_message(
+                f"Server did not respond [{e}]"
+            )
+            return
+
         await interaction.response.send_message(
             f"Server responses: \n- {'- '.join(responses)}"
         )
+
+    @add_role.error
+    @del_role.error
+    async def _role_whitelist_error(self, interaction: Interaction, error):
+        if not isinstance(error, commands.CheckFailure):
+            await interaction.response.send_message(
+                f"Unknown error - {error}",
+                ephemeral=True
+            )
+            return
+        await interaction.response.send_message(
+            f"These commands must be executed as Administrator ({error})",
+            ephemeral=True
+        )
+
+    @set_hostport.error
+    @rcon.error
+    @default_gamerules.error
+    async def _cmd_error(self, interaction: Interaction, error):
+        if not allowed_roles:
+            interaction.response.send_message(
+                "Set permisions for console interaction with /add_role."
+            )
+        else:
+            interaction.response.send_message(
+                f"Missing at least one role from {allowed_roles}.",
+                ephemeral=True
+            )
+        print(allowed_roles)
+        print(interaction.user.roles)
+        pass
 
 
 async def setup(bot):

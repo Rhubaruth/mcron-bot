@@ -3,6 +3,7 @@ from discord.ext import commands
 from loadEnv import get_discord_token
 
 intents = discord.Intents.default()
+intents.members = True
 intents.message_content = True
 
 bot = commands.Bot(command_prefix="$", intents=intents)
@@ -35,7 +36,7 @@ async def _hello(interaction: discord.Interaction):
 @bot.event
 async def on_ready():
     # Load cogs
-    await bot.load_extension("cogs.mcrcon")
+    # await bot.load_extension("cogs.mcrcon")
 
     # Sync commands
     await bot.tree.sync()

@@ -36,7 +36,7 @@ async def _hello(interaction: discord.Interaction):
 @bot.event
 async def on_ready():
     # Load cogs
-    # await bot.load_extension("cogs.mcrcon")
+    await bot.load_extension("cogs.mcrcon")
 
     # Sync commands
     await bot.tree.sync()

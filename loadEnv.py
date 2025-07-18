@@ -7,4 +7,4 @@ def get_discord_token():
 
 
 def get_mcrcon_pass():
-    return os.getenv('MCRCON_PASSWORD')
+    return os.getenv('RCON_PASSWORD')

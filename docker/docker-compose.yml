@@ -1,0 +1,16 @@
+services:
+  app:
+    image: rhubaruth/mcrcon
+    container_name: mcrcon-app
+    restart: unless-stopped
+    volumes:
+      - mcrcondata:/app
+    env_file: "./.env"
+    networks:
+      - minecraftnet
+networks:
+  minecraftnet:
+    external: true
+    name: server-docker_minecraftnet
+volumes:
+  mcrcondata:

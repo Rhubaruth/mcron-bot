@@ -1,0 +1,5 @@
+# sys variables
+PYTHONUNBUFFERED=1  # Need to be set to docker display print()
+
+DISCORD_TOKEN='token'
+MCRCON_PASSWORD='password'
